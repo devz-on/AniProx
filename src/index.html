@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>M3U8 Proxy Player</title>
+    <meta name="description" content="Playground for testing m3u8 proxy." />
+    <meta property="og:title" content="M3U8 Proxy" />
+    <meta
+      property="og:description"
+      content="Playground for testing m3u8 proxy."
+    />
+
+    <!-- Tailwind CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  </head>
+
+  <body
+    class="bg-gray-900 text-white min-h-screen flex items-center justify-center px-4 py-8"
+  >
+    <div
+      class="w-full max-w-screen-xl bg-gray-800 rounded-xl shadow-lg p-6 space-y-6"
+    >
+      <div>
+        <h1 class="text-3xl font-bold mb-2">M3U8 Proxy Player</h1>
+        <p class="text-sm text-gray-400">Paste your M3U8 URL and referer.</p>
+      </div>
+
+      <div class="space-y-4">
+        <!-- URL Input -->
+        <div>
+          <label for="url" class="block text-sm font-medium text-gray-300 mb-1"
+            >M3U8 URL</label
+          >
+          <input
+            type="text"
+            id="url"
+            class="w-full bg-gray-700 border border-gray-600 rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value="https://tubeplx.viddsn.cfd/anime/eccbc87e4b5ce2fe28308fd9f2a7baf3/98960e8859d29683ad5984c4bae288af/master.m3u8"
+          />
+        </div>
+
+        <!-- Headers Input -->
+        <div>
+          <label
+            for="headers"
+            class="block text-sm font-medium text-gray-300 mb-1"
+            >Headers (JSON)</label
+          >
+          <textarea
+            id="headers"
+            class="w-full bg-gray-700 border border-gray-600 rounded-sm px-2 py-2 text-white h-12 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+{"referer": "https://vidwish.live/"}</textarea
+          >
+        </div>
+
+        <!-- Button -->
+        <button
+          onclick="copy()"
+          id="copy"
+          class="w-full copy bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-sm transition"
+        >
+          copy url
+        </button>
+        <button
+          onclick="test()"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-sm transition"
+        >
+          Play Stream
+        </button>
+
+        <!-- Video -->
+        <div class="mt-6">
+          <video
+            id="hls"
+            controls
+            class="w-full rounded-md aspect-video bg-black"
+          ></video>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function copy() {
+        const url = document.getElementById("url").value;
+        let headers = document.getElementById("headers").value;
+        const copy = document.getElementById("copy");
+
+        const location = window.location.href;
+        const properUrl = `${location}m3u8-proxy?url=${encodeURIComponent(
+          url
+        )}&headers=${encodeURIComponent(JSON.stringify(JSON.parse(headers)))}`;
+
+        copy.textContent = "copied!";
+        setTimeout(() => {
+          copy.textContent = "copy url";
+        }, 1000);
+        navigator.clipboard.writeText(properUrl);
+      }
+      function test() {
+        const url = document.getElementById("url").value;
+        let headers = document.getElementById("headers").value;
+
+        try {
+          headers = JSON.parse(headers);
+        } catch (e) {
+          headers = {};
+          alert("Invalid JSON in headers. Reset to {}.");
+        }
+
+        console.log("Using URL:", url);
+        console.log("Using Headers:", headers);
+
+        const proxyURL = `/m3u8-proxy?url=${encodeURIComponent(
+          url
+        )}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
+        if (Hls.isSupported()) {
+          const video = document.getElementById("hls");
+          const hls = new Hls();
+
+          hls.loadSource(proxyURL);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            console.log("Loaded stream from:", proxyURL);
+          });
+        }
+      }
+    </script>
+  </body>
+</html>
