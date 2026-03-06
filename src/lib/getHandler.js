@@ -117,7 +117,7 @@ export default function getHandler(options, proxy) {
           return;
         }
         const url = uri.searchParams.get("url");
-        return proxyM3U8(url ?? "", headers, res);
+        return proxyM3U8(url ?? "", headers, req, res);
       } else if (uri.pathname === "/ts-proxy") {
         let headers = {};
         try {
