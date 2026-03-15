@@ -127,7 +127,8 @@ function rewriteManifest(content, sourceUrl, headers) {
 }
 
 export default async function proxyM3U8(url, headers, req, res) {
-  const method = req?.method === "HEAD" ? "HEAD" : "GET";
+  const isHeadRequest = req?.method === "HEAD";
+  const upstreamMethod = "GET";
 
   if (!url) {
     applyProxyCorsHeaders(res);
@@ -139,7 +140,7 @@ export default async function proxyM3U8(url, headers, req, res) {
   let upstreamResponse;
   try {
     upstreamResponse = await axios(url, {
-      method,
+      method: upstreamMethod,
       headers: buildUpstreamHeaders(headers),
       responseType: "text",
       transformResponse: [(data) => data],
@@ -158,7 +159,7 @@ export default async function proxyM3U8(url, headers, req, res) {
   const upstreamContentType =
     upstreamResponse?.headers?.["content-type"] || HLS_CONTENT_TYPE;
 
-  if (method === "HEAD") {
+  if (isHeadRequest) {
     res.writeHead(upstreamStatus, { "Content-Type": upstreamContentType });
     res.end();
     return;
