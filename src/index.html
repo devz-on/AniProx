@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>M3U8 Proxy Player</title>
-    <meta name="description" content="Playground for testing m3u8 proxy." />
-    <meta property="og:title" content="M3U8 Proxy" />
+    <title>M3U8 Proxy Admin Trial</title>
+    <meta name="description" content="Admin trial page for testing m3u8 proxy." />
+    <meta property="og:title" content="M3U8 Proxy Admin Trial" />
     <meta
       property="og:description"
-      content="Playground for testing m3u8 proxy."
+      content="Admin trial page for testing m3u8 proxy."
     />
 
     <!-- Tailwind CDN -->
@@ -23,9 +23,17 @@
       class="w-full max-w-screen-xl bg-gray-800 rounded-xl shadow-lg p-6 space-y-6"
     >
       <div>
-        <h1 class="text-3xl font-bold mb-2">M3U8 Proxy Player</h1>
-        <p class="text-sm text-gray-400">Paste your M3U8 URL and referer.</p>
-      </div>
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <h1 class="text-3xl font-bold mb-2">M3U8 Proxy Admin Trial</h1>
+            <div class="flex items-center gap-2">
+              <a href="/" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded-sm">Docs</a>
+              <a href="/admin-trial/logout" class="text-xs bg-red-700 hover:bg-red-600 px-2 py-1 rounded-sm"
+                >Logout</a
+              >
+            </div>
+          </div>
+          <p class="text-sm text-gray-400">Paste your M3U8 URL and optional referer.</p>
+        </div>
 
       <div class="space-y-4">
         <!-- URL Input -->
@@ -41,19 +49,24 @@
           />
         </div>
 
-        <!-- Headers Input -->
+        <!-- Referer Input -->
         <div>
-          <label
-            for="headers"
-            class="block text-sm font-medium text-gray-300 mb-1"
-            >Headers (JSON)</label
-          >
+          <label for="referer" class="block text-sm font-medium text-gray-300 mb-1">Referer (optional)</label>
+          <input
+            type="text"
+            id="referer"
+            class="w-full bg-gray-700 border border-gray-600 rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value="https://vidwish.live/"
+          />
+        </div>
+
+        <!-- Extra Headers Input -->
+        <div>
+          <label for="headers" class="block text-sm font-medium text-gray-300 mb-1">Extra Headers (JSON)</label>
           <textarea
             id="headers"
             class="w-full bg-gray-700 border border-gray-600 rounded-sm px-2 py-2 text-white h-12 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-{"referer": "https://vidwish.live/"}</textarea
-          >
+          >{}</textarea>
         </div>
 
         <!-- Button -->
@@ -85,13 +98,25 @@
     <script>
       function copy() {
         const url = document.getElementById("url").value;
+        const referer = document.getElementById("referer").value.trim();
         let headers = document.getElementById("headers").value;
         const copy = document.getElementById("copy");
 
-        const location = window.location.href;
-        const properUrl = `${location}m3u8-proxy?url=${encodeURIComponent(
+        let parsedHeaders = {};
+        try {
+          parsedHeaders = JSON.parse(headers || "{}");
+        } catch (e) {
+          parsedHeaders = {};
+        }
+        if (referer && !parsedHeaders.referer) {
+          parsedHeaders.referer = referer;
+        }
+
+        const properUrl = `${window.location.origin}/m3u8-proxy?url=${encodeURIComponent(
           url
-        )}&headers=${encodeURIComponent(JSON.stringify(JSON.parse(headers)))}`;
+        )}&referer=${encodeURIComponent(referer)}&headers=${encodeURIComponent(
+          JSON.stringify(parsedHeaders)
+        )}`;
 
         copy.textContent = "copied!";
         setTimeout(() => {
@@ -101,6 +126,7 @@
       }
       function test() {
         const url = document.getElementById("url").value;
+        const referer = document.getElementById("referer").value.trim();
         let headers = document.getElementById("headers").value;
 
         try {
@@ -109,12 +135,15 @@
           headers = {};
           alert("Invalid JSON in headers. Reset to {}.");
         }
+        if (referer && !headers.referer) {
+          headers.referer = referer;
+        }
 
         console.log("Using URL:", url);
         console.log("Using Headers:", headers);
 
-        const proxyURL = `/m3u8-proxy?url=${encodeURIComponent(
-          url
+        const proxyURL = `/m3u8-proxy?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(
+          referer
         )}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
         if (Hls.isSupported()) {
           const video = document.getElementById("hls");
