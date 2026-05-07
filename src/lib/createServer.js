@@ -40,19 +40,10 @@ export default function createServer(options) {
     return false;
   };
 
-  const shouldBypassOriginCheck = (req) => {
-    const path = String(req?.url || "").split("?")[0];
-    return (
-      path === "/" ||
-      path === "/admin-trial" ||
-      path === "/admin-trial/login" ||
-      path === "/admin-trial/logout" ||
-      path === "/m3u8-proxy" ||
-      path === "/ts-proxy"
-    );
-  };
-
   const isOriginAllowed = (origin, options) => {
+    if (!origin) {
+      return true;
+    }
     if (options.originWhitelist.includes("*")) {
       return true;
     }
@@ -74,7 +65,7 @@ export default function createServer(options) {
   if (options.httpsOptions) {
     server = https.createServer(options.httpsOptions, (req, res) => {
       const origin = req.headers.origin || "";
-      if (!shouldBypassOriginCheck(req) && !isOriginAllowed(origin, options)) {
+      if (!isOriginAllowed(origin, options)) {
         res.writeHead(403, "Forbidden");
         res.end(
           `The origin "${origin}" was blacklisted by the operator of this proxy.`
@@ -87,7 +78,7 @@ export default function createServer(options) {
   } else {
     server = http.createServer((req, res) => {
       const origin = req.headers.origin || "";
-      if (!shouldBypassOriginCheck(req) && !isOriginAllowed(origin, options)) {
+      if (!isOriginAllowed(origin, options)) {
         res.writeHead(403, "Forbidden");
         res.end(
           `The origin "${origin}" was blacklisted by the operator of this proxy.`

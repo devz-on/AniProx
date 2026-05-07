@@ -9,15 +9,11 @@ const port = process.env.PORT || 8080;
 const web_server_url = process.env.PUBLIC_URL || `http://${host}:${port}`;
 
 export default function server() {
-  const parsedAllowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean)
-    : [];
-
   createServer({
     originBlacklist: [],
-    originWhitelist: parsedAllowedOrigins,
+    originWhitelist: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(",")
+      : [],
     requireHeader: [],
     removeHeaders: [
       "cookie",

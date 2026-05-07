@@ -91,6 +91,16 @@ function rewriteManifest(content, sourceUrl, headers) {
   const lines = String(content ?? "").split("\n");
   const rewritten = [];
   const isMasterPlaylist = String(content ?? "").includes("RESOLUTION=");
+  const rewriteUriAttribute = (line, builder) =>
+    line.replace(/URI="([^"]+)"/i, (_, value) => {
+      let resolved = value;
+      try {
+        resolved = new URL(value, sourceUrl).href;
+      } catch {
+        resolved = value;
+      }
+      return `URI="${builder(resolved, headers)}"`;
+    });
 
   for (const line of lines) {
     if (!line.trim()) {
@@ -104,11 +114,11 @@ function rewriteManifest(content, sourceUrl, headers) {
         const keyUrl = regex.exec(line)?.[0] ?? "";
         const proxyUrl = buildTsProxyUrl(keyUrl, headers);
         rewritten.push(line.replace(regex, proxyUrl));
-      } else if (isMasterPlaylist && line.startsWith("#EXT-X-MEDIA:TYPE=AUDIO")) {
-        const regex = /https?:\/\/[^\""\s]+/g;
-        const audioUrl = regex.exec(line)?.[0] ?? "";
-        const proxyUrl = buildM3U8ProxyUrl(audioUrl, headers);
-        rewritten.push(line.replace(regex, proxyUrl));
+      } else if (
+        isMasterPlaylist &&
+        (line.startsWith("#EXT-X-MEDIA:") || line.startsWith("#EXT-X-I-FRAME-STREAM-INF:"))
+      ) {
+        rewritten.push(rewriteUriAttribute(line, buildM3U8ProxyUrl));
       } else {
         rewritten.push(line);
       }

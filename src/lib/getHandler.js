@@ -10,101 +10,10 @@ import proxyM3U8 from "./proxyM3U8.js";
 import { proxyTs } from "./proxyTS.js";
 import proxyRequest from "./proxyRequest.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const docsHtml = readFileSync(join(__dirname, "../docs.html"), "utf8");
-const adminLoginHtml = readFileSync(join(__dirname, "../admin-login.html"), "utf8");
-const adminTrialHtml = readFileSync(join(__dirname, "../index.html"), "utf8");
-
-const ADMIN_COOKIE_NAME = "anyprox_admin_trial";
-const DEFAULT_ADMIN_SESSION_TTL_SECONDS = 60 * 60;
-const MAX_BODY_SIZE_BYTES = 16 * 1024;
-
-function parseCookies(rawCookieHeader) {
-  const pairs = String(rawCookieHeader || "").split(";");
-  const cookies = {};
-  pairs.forEach((pair) => {
-    const [rawName, ...rest] = pair.split("=");
-    const name = String(rawName || "").trim();
-    if (!name) return;
-    const value = rest.join("=").trim();
-    cookies[name] = decodeURIComponent(value);
-  });
-  return cookies;
-}
-
-function readRequestBody(req) {
-  return new Promise((resolve) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      if (body.length >= MAX_BODY_SIZE_BYTES) {
-        return;
-      }
-      body += String(chunk || "");
-      if (body.length > MAX_BODY_SIZE_BYTES) {
-        body = body.slice(0, MAX_BODY_SIZE_BYTES);
-      }
-    });
-    req.on("end", () => resolve(body));
-    req.on("error", () => resolve(""));
-  });
-}
-
-function parseUrlEncodedBody(rawBody) {
-  const params = new URLSearchParams(String(rawBody || ""));
-  const data = {};
-  params.forEach((value, key) => {
-    data[key] = value;
-  });
-  return data;
-}
-
-function toSessionTtlSeconds() {
-  const raw = Number.parseInt(
-    String(process.env.ADMIN_TRIAL_SESSION_TTL_SECONDS || ""),
-    10
-  );
-  if (!Number.isFinite(raw) || raw < 60) {
-    return DEFAULT_ADMIN_SESSION_TTL_SECONDS;
-  }
-  return raw;
-}
-
-function createAdminCookieValue() {
-  const maxAge = toSessionTtlSeconds();
-  return `${ADMIN_COOKIE_NAME}=1; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax`;
-}
-
-function clearAdminCookieValue() {
-  return `${ADMIN_COOKIE_NAME}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax`;
-}
-
-function hasAdminAccess(req, password) {
-  if (!password) {
-    return true;
-  }
-  const cookies = parseCookies(req.headers.cookie || "");
-  return cookies[ADMIN_COOKIE_NAME] === "1";
-}
-
-function writeHtml(res, html, statusCode = 200, extraHeaders = {}) {
-  res.writeHead(statusCode, {
-    "Content-Type": "text/html; charset=utf-8",
-    ...extraHeaders,
-  });
-  res.end(html);
-}
-
-function redirect(res, location, extraHeaders = {}) {
-  res.writeHead(302, {
-    Location: location,
-    ...extraHeaders,
-  });
-  res.end();
-}
-
 export default function getHandler(options, proxy) {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+
   const corsAnywhere = {
     handleInitialRequest: null,
     getProxyForUrl: getProxyForUrl,
@@ -141,7 +50,6 @@ export default function getHandler(options, proxy) {
       });
     }
   }
-
   const hasRequiredHeaders = function (headers) {
     return (
       !corsAnywhere.requireHeader ||
@@ -151,56 +59,7 @@ export default function getHandler(options, proxy) {
     );
   };
 
-  const serveDocs = (res) => writeHtml(res, docsHtml);
-  const serveAdminLogin = (res) => writeHtml(res, adminLoginHtml);
-  const serveAdminTrial = (res) => writeHtml(res, adminTrialHtml);
-
   return function (req, res) {
-    const adminPassword = String(process.env.ADMIN_TRIAL_PASSWORD || "").trim();
-    const requestUrl = new URL(req.url || "/", "http://localhost:3000");
-
-    // Dedicated web UI routes (docs + password-gated trial page)
-    if (requestUrl.pathname === "/" && req.method === "GET") {
-      serveDocs(res);
-      return;
-    }
-
-    if (requestUrl.pathname === "/admin-trial/logout") {
-      redirect(res, "/", { "Set-Cookie": clearAdminCookieValue() });
-      return;
-    }
-
-    if (requestUrl.pathname === "/admin-trial/login") {
-      if (req.method !== "POST") {
-        redirect(res, "/");
-        return;
-      }
-
-      void readRequestBody(req).then((rawBody) => {
-        const form = parseUrlEncodedBody(rawBody);
-        const password = String(form.password || "").trim();
-        if (!adminPassword || password === adminPassword) {
-          redirect(res, "/admin-trial", {
-            "Set-Cookie": createAdminCookieValue(),
-          });
-          return;
-        }
-        redirect(res, "/", {
-          "Set-Cookie": clearAdminCookieValue(),
-        });
-      });
-      return;
-    }
-
-    if (requestUrl.pathname === "/admin-trial" && req.method === "GET") {
-      if (hasAdminAccess(req, adminPassword)) {
-        serveAdminTrial(res);
-        return;
-      }
-      serveAdminLogin(res);
-      return;
-    }
-
     req.corsAnywhereRequestState = {
       getProxyForUrl: corsAnywhere.getProxyForUrl,
       maxRedirects: corsAnywhere.maxRedirects,
@@ -231,8 +90,7 @@ export default function getHandler(options, proxy) {
         );
         return;
       }
-
-      serveDocs(res);
+      res.end(readFileSync(join(__dirname, "../index.html")));
       return;
     }
 
@@ -249,7 +107,7 @@ export default function getHandler(options, proxy) {
     }
 
     if (!/^\/https?:/.test(req.url) && !isValidHostName(location.hostname)) {
-      const uri = requestUrl;
+      const uri = new URL(req.url || "/", "http://localhost:3000");
       if (uri.pathname === "/m3u8-proxy") {
         let headers = {};
         try {
@@ -259,10 +117,13 @@ export default function getHandler(options, proxy) {
           res.end(e.message);
           return;
         }
-        const url = uri.searchParams.get("url");
+        const referer = uri.searchParams.get("referer");
+        if (referer && !headers.referer && !headers.Referer) {
+          headers.referer = referer;
+        }
+        const url = uri.searchParams.get("url") || uri.searchParams.get("u");
         return proxyM3U8(url ?? "", headers, req, res);
-      }
-      if (uri.pathname === "/ts-proxy") {
+      } else if (uri.pathname === "/ts-proxy") {
         let headers = {};
         try {
           headers = JSON.parse(uri.searchParams.get("headers") ?? "{}");
@@ -271,13 +132,19 @@ export default function getHandler(options, proxy) {
           res.end(e.message);
           return;
         }
-        const url = uri.searchParams.get("url");
+        const referer = uri.searchParams.get("referer");
+        if (referer && !headers.referer && !headers.Referer) {
+          headers.referer = referer;
+        }
+        const url = uri.searchParams.get("url") || uri.searchParams.get("u");
         return proxyTs(url ?? "", headers, req, res);
+      } else if (uri.pathname === "/") {
+        return res.end(readFileSync(join(__dirname, "../index.html")));
+      } else {
+        res.writeHead(404, "Invalid host", cors_headers);
+        res.end("Invalid host: " + location.hostname);
+        return;
       }
-
-      res.writeHead(404, "Invalid host", cors_headers);
-      res.end("Invalid host: " + location.hostname);
-      return;
     }
 
     if (!hasRequiredHeaders(req.headers)) {
