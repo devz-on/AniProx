@@ -3,130 +3,639 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>M3U8 Proxy Player</title>
-    <meta name="description" content="Playground for testing m3u8 proxy." />
-    <meta property="og:title" content="M3U8 Proxy" />
+    <title>AniProx HLS Lab</title>
+    <meta
+      name="description"
+      content="Direct browser HLS testing with an optional header bridge for streams that require forbidden request headers."
+    />
+    <meta property="og:title" content="AniProx HLS Lab" />
     <meta
       property="og:description"
-      content="Playground for testing m3u8 proxy."
+      content="Direct browser HLS testing with an optional header bridge for streams that require forbidden request headers."
     />
 
     <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #020617;
+        color: #fff;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      code {
+        border-radius: 0.25rem;
+        background: rgba(15, 23, 42, 0.8);
+        padding: 0.05rem 0.25rem;
+        color: #bfdbfe;
+      }
+      main {
+        width: min(1280px, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 2rem 0;
+      }
+      section,
+      aside {
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        border-radius: 1rem;
+        background: #111827;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
+      }
+      main > section:first-child,
+      main > section:last-child,
+      .space-y-4,
+      aside {
+        padding: 1.5rem;
+      }
+      main,
+      .space-y-4,
+      .space-y-3,
+      .space-y-6 {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .grid {
+        display: grid;
+        gap: 1.5rem;
+      }
+      @media (min-width: 1024px) {
+        main > section.grid {
+          grid-template-columns: minmax(0, 1fr) 420px;
+        }
+      }
+      @media (min-width: 768px) {
+        .md\:grid-cols-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .md\:grid-cols-3 {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      h1,
+      h2,
+      p {
+        margin-top: 0;
+      }
+      h1 {
+        margin-bottom: 0.5rem;
+        font-size: clamp(2rem, 5vw, 3.25rem);
+        line-height: 1;
+      }
+      h2 {
+        margin-bottom: 1rem;
+        font-size: 1.35rem;
+      }
+      label {
+        display: block;
+        color: #d1d5db;
+      }
+      input[type="text"],
+      textarea {
+        width: 100%;
+        border: 1px solid #374151;
+        border-radius: 0.375rem;
+        background: #1f2937;
+        color: #fff;
+        padding: 0.65rem 0.75rem;
+        outline: none;
+      }
+      textarea {
+        min-height: 7rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      input[type="text"]:focus,
+      textarea:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+      }
+      label:has(input[type="radio"]) {
+        border: 1px solid #374151;
+        border-radius: 0.75rem;
+        background: #1f2937;
+        padding: 1rem;
+      }
+      label:has(input[type="radio"]:checked) {
+        border-color: #2563eb;
+        background: rgba(30, 64, 175, 0.35);
+      }
+      button {
+        cursor: pointer;
+        border: 0;
+        border-radius: 0.375rem;
+        color: #fff;
+        font-weight: 700;
+        padding: 0.7rem 1rem;
+      }
+      button:nth-of-type(1) {
+        background: #ca8a04;
+      }
+      button:nth-of-type(2) {
+        background: #9333ea;
+      }
+      button:nth-of-type(3) {
+        background: #2563eb;
+      }
+      button:hover {
+        filter: brightness(1.1);
+      }
+      #status {
+        border-radius: 0.375rem;
+        background: #020617;
+        color: #e5e7eb;
+        padding: 1rem;
+        white-space: pre-wrap;
+      }
+      .hidden {
+        display: none;
+      }
+      video {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 0.75rem;
+        background: #000;
+      }
+      .text-blue-300 {
+        color: #93c5fd;
+      }
+      .text-gray-300 {
+        color: #d1d5db;
+      }
+      .text-gray-400 {
+        color: #9ca3af;
+      }
+      .text-yellow-100 {
+        color: #fef3c7;
+      }
+      .text-red-200 {
+        color: #fecaca;
+      }
+      .bg-yellow-500\/10 {
+        background: rgba(234, 179, 8, 0.12);
+      }
+      .border-yellow-500\/40 {
+        border: 1px solid rgba(234, 179, 8, 0.45);
+      }
+      .rounded-sm {
+        border-radius: 0.375rem;
+      }
+      .p-3 {
+        padding: 0.75rem;
+      }
+      .font-semibold {
+        font-weight: 600;
+      }
+      .font-bold {
+        font-weight: 700;
+      }
+      .uppercase {
+        text-transform: uppercase;
+      }
+      .tracking-widest {
+        letter-spacing: 0.1em;
+      }
+      .text-sm {
+        font-size: 0.875rem;
+      }
+      .text-xs {
+        font-size: 0.75rem;
+      }
+      .block {
+        display: block;
+      }
+    </style>
   </head>
 
-  <body
-    class="bg-gray-900 text-white min-h-screen flex items-center justify-center px-4 py-8"
-  >
-    <div
-      class="w-full max-w-screen-xl bg-gray-800 rounded-xl shadow-lg p-6 space-y-6"
-    >
-      <div>
-        <h1 class="text-3xl font-bold mb-2">M3U8 Proxy Player</h1>
-        <p class="text-sm text-gray-400">Paste your M3U8 URL and referer.</p>
-      </div>
-
-      <div class="space-y-4">
-        <!-- URL Input -->
-        <div>
-          <label for="url" class="block text-sm font-medium text-gray-300 mb-1"
-            >M3U8 URL</label
+  <body class="bg-gray-950 text-white min-h-screen px-4 py-8">
+    <main class="mx-auto w-full max-w-screen-xl space-y-6">
+      <section class="rounded-xl bg-gray-900 p-6 shadow-lg">
+        <div class="space-y-2">
+          <p
+            class="text-sm font-semibold uppercase tracking-widest text-blue-300"
           >
-          <input
-            type="text"
-            id="url"
-            class="w-full bg-gray-700 border border-gray-600 rounded-sm px-2 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value="https://tubeplx.viddsn.cfd/anime/eccbc87e4b5ce2fe28308fd9f2a7baf3/98960e8859d29683ad5984c4bae288af/master.m3u8"
-          />
+            AniProx HLS Lab
+          </p>
+          <h1 class="text-3xl font-bold">Client-first M3U8 player</h1>
+          <p class="max-w-4xl text-sm text-gray-300">
+            Direct mode keeps video traffic in the browser. Header Bridge mode
+            is the practical escape hatch for streams that require forbidden
+            browser headers such as <code>Referer</code>, <code>Origin</code>,
+            or <code>User-Agent</code>: the client controls the request, while
+            this server only relays the playlist/segments when the browser
+            cannot send those headers itself.
+          </p>
+        </div>
+      </section>
+
+      <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+        <div class="space-y-4 rounded-xl bg-gray-900 p-6 shadow-lg">
+          <div>
+            <label
+              for="url"
+              class="mb-1 block text-sm font-medium text-gray-300"
+            >
+              M3U8 URL
+            </label>
+            <input
+              type="text"
+              id="url"
+              class="w-full rounded-sm border border-gray-700 bg-gray-800 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value="https://cdn.mewstream.buzz/anime/b555f4a2901228cc826327079761e696/057039240cc50884f1495a97adeef1d1/master.m3u8"
+            />
+          </div>
+
+          <div>
+            <label
+              for="headers"
+              class="mb-1 block text-sm font-medium text-gray-300"
+            >
+              Request headers (JSON)
+            </label>
+            <textarea
+              id="headers"
+              class="h-28 w-full resize-y rounded-sm border border-gray-700 bg-gray-800 px-3 py-2 font-mono text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+{
+  "Referer": "https://megaplay.buzz/"
+}</textarea
+            >
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-2">
+            <label class="rounded-lg border border-gray-700 bg-gray-800 p-4">
+              <input
+                type="radio"
+                name="mode"
+                value="direct"
+                class="mr-2 align-middle"
+              />
+              <span class="font-semibold">Direct browser</span>
+              <span class="mt-1 block text-xs text-gray-400">
+                No media relay. Only browser-safe headers can be sent.
+              </span>
+            </label>
+            <label class="rounded-lg border border-blue-600 bg-blue-950/40 p-4">
+              <input
+                type="radio"
+                name="mode"
+                value="bridge"
+                class="mr-2 align-middle"
+                checked
+              />
+              <span class="font-semibold">Header Bridge</span>
+              <span class="mt-1 block text-xs text-gray-300">
+                Uses /m3u8-proxy and /ts-proxy when forbidden headers are
+                needed.
+              </span>
+            </label>
+          </div>
+
+          <div
+            class="rounded-sm border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm text-yellow-100"
+          >
+            Browser JavaScript still cannot spoof forbidden headers. The “break
+            the wall” implementation here is mode-aware: try direct first,
+            detect browser/header limits, then use Header Bridge only when a
+            stream host requires headers that the browser is not allowed to set.
+          </div>
+
+          <div class="grid gap-3 md:grid-cols-3">
+            <button
+              onclick="copy()"
+              id="copy"
+              class="rounded-sm bg-yellow-600 px-4 py-2 font-bold text-white transition hover:bg-yellow-700"
+            >
+              Copy URL
+            </button>
+            <button
+              onclick="runDiagnostics()"
+              class="rounded-sm bg-purple-600 px-4 py-2 font-bold text-white transition hover:bg-purple-700"
+            >
+              Diagnose
+            </button>
+            <button
+              onclick="test()"
+              class="rounded-sm bg-blue-600 px-4 py-2 font-bold text-white transition hover:bg-blue-700"
+            >
+              Play
+            </button>
+          </div>
+
+          <pre
+            id="status"
+            class="hidden whitespace-pre-wrap rounded-sm bg-gray-950 p-3 text-sm text-gray-200"
+          ></pre>
         </div>
 
-        <!-- Headers Input -->
-        <div>
-          <label
-            for="headers"
-            class="block text-sm font-medium text-gray-300 mb-1"
-            >Headers (JSON)</label
-          >
-          <textarea
-            id="headers"
-            class="w-full bg-gray-700 border border-gray-600 rounded-sm px-2 py-2 text-white h-12 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-{"referer": "https://vidwish.live/"}</textarea
-          >
-        </div>
+        <aside class="space-y-4 rounded-xl bg-gray-900 p-6 shadow-lg">
+          <h2 class="text-xl font-semibold">What each mode does</h2>
+          <div class="space-y-3 text-sm text-gray-300">
+            <p>
+              <strong class="text-white">Direct browser</strong> loads the M3U8
+              URL exactly from the stream host. It is the pure client-side path,
+              but it can only use headers allowed by Fetch/XHR and by CORS.
+            </p>
+            <p>
+              <strong class="text-white">Header Bridge</strong> creates a
+              same-origin playlist URL for the browser. The server fetches the
+              upstream playlist with your JSON headers, rewrites child
+              playlists, keys, and media segments back through AniProx, then
+              streams bytes to the video element.
+            </p>
+            <p>
+              The provided Mewstream sample returns <code>403</code> without the
+              Megaplay referer in command-line testing, so Header Bridge is the
+              expected working mode for that URL.
+            </p>
+          </div>
+        </aside>
+      </section>
 
-        <!-- Button -->
-        <button
-          onclick="copy()"
-          id="copy"
-          class="w-full copy bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-sm transition"
-        >
-          copy url
-        </button>
-        <button
-          onclick="test()"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-sm transition"
-        >
-          Play Stream
-        </button>
-
-        <!-- Video -->
-        <div class="mt-6">
-          <video
-            id="hls"
-            controls
-            class="w-full rounded-md aspect-video bg-black"
-          ></video>
-        </div>
-      </div>
-    </div>
+      <section class="rounded-xl bg-gray-900 p-4 shadow-lg">
+        <video
+          id="hls"
+          controls
+          class="aspect-video w-full rounded-md bg-black"
+        ></video>
+      </section>
+    </main>
 
     <script>
-      function copy() {
-        const url = document.getElementById("url").value;
-        let headers = document.getElementById("headers").value;
-        const copy = document.getElementById("copy");
+      let hlsInstance;
+      const forbiddenHeaders = new Set([
+        "accept-charset",
+        "accept-encoding",
+        "access-control-request-headers",
+        "access-control-request-method",
+        "connection",
+        "content-length",
+        "cookie",
+        "cookie2",
+        "date",
+        "dnt",
+        "expect",
+        "host",
+        "keep-alive",
+        "origin",
+        "referer",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade",
+        "user-agent",
+        "via",
+      ]);
 
-        const location = window.location.href;
-        const properUrl = `${location}m3u8-proxy?url=${encodeURIComponent(
-          url
-        )}&headers=${encodeURIComponent(JSON.stringify(JSON.parse(headers)))}`;
-
-        copy.textContent = "copied!";
-        setTimeout(() => {
-          copy.textContent = "copy url";
-        }, 1000);
-        navigator.clipboard.writeText(properUrl);
+      function getStatus() {
+        return document.getElementById("status");
       }
-      function test() {
-        const url = document.getElementById("url").value;
-        let headers = document.getElementById("headers").value;
+
+      function setStatus(message, isError = false) {
+        const status = getStatus();
+        status.classList.remove("hidden", "text-red-200", "text-gray-200");
+        status.classList.add(isError ? "text-red-200" : "text-gray-200");
+        status.textContent = message;
+      }
+
+      function getMode() {
+        return document.querySelector('input[name="mode"]:checked').value;
+      }
+
+      function setMode(mode) {
+        const input = document.querySelector(
+          `input[name="mode"][value="${mode}"]`
+        );
+        if (input) input.checked = true;
+      }
+
+      function parseHeadersInput() {
+        const rawHeaders = document.getElementById("headers").value.trim();
+        if (!rawHeaders) return {};
+        const parsed = JSON.parse(rawHeaders);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("Headers must be a JSON object.");
+        }
+        return parsed;
+      }
+
+      function splitHeaders(headers) {
+        const safe = {};
+        const blocked = {};
+        for (const [name, value] of Object.entries(headers)) {
+          const normalized = name.toLowerCase();
+          if (
+            forbiddenHeaders.has(normalized) ||
+            normalized.startsWith("proxy-") ||
+            normalized.startsWith("sec-")
+          ) {
+            blocked[name] = value;
+          } else {
+            safe[name] = value;
+          }
+        }
+        return { safe, blocked };
+      }
+
+      function applyHeaders(xhr, headers) {
+        for (const [name, value] of Object.entries(headers)) {
+          try {
+            xhr.setRequestHeader(name, String(value));
+          } catch (error) {
+            console.warn(`Browser rejected request header "${name}"`, error);
+          }
+        }
+      }
+
+      function buildProxyUrl(path, url, headers) {
+        const params = new URLSearchParams({
+          url,
+          headers: JSON.stringify(headers),
+        });
+        return `${window.location.origin}${path}?${params.toString()}`;
+      }
+
+      function buildPlayableUrl(url, headers, mode) {
+        if (mode === "bridge") {
+          return buildProxyUrl("/m3u8-proxy", url, headers);
+        }
+        return url;
+      }
+
+      function readStateFromUrl() {
+        const params = new URLSearchParams(
+          window.location.search || window.location.hash.slice(1)
+        );
+        const url = params.get("url") || params.get("u");
+        const headers = params.get("headers");
+        const mode = params.get("mode");
+        if (url) document.getElementById("url").value = url;
+        if (mode) setMode(mode);
+        if (headers) {
+          try {
+            document.getElementById("headers").value = JSON.stringify(
+              JSON.parse(headers),
+              null,
+              2
+            );
+          } catch {
+            document.getElementById("headers").value = headers;
+          }
+        }
+      }
+
+      function buildClientUrl() {
+        const url = document.getElementById("url").value.trim();
+        const headers = parseHeadersInput();
+        const params = new URLSearchParams({
+          url,
+          headers: JSON.stringify(headers),
+          mode: getMode(),
+        });
+        return `${window.location.origin}${
+          window.location.pathname
+        }?${params.toString()}`;
+      }
+
+      function copy() {
+        const copyButton = document.getElementById("copy");
+        try {
+          const properUrl = buildClientUrl();
+          copyButton.textContent = "Copied!";
+          setTimeout(() => {
+            copyButton.textContent = "Copy URL";
+          }, 1000);
+          navigator.clipboard.writeText(properUrl);
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      function destroyCurrentPlayer() {
+        const video = document.getElementById("hls");
+        if (hlsInstance) {
+          hlsInstance.destroy();
+          hlsInstance = null;
+        }
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
+
+      async function runDiagnostics() {
+        const url = document.getElementById("url").value.trim();
+        let headers;
 
         try {
-          headers = JSON.parse(headers);
-        } catch (e) {
-          headers = {};
-          alert("Invalid JSON in headers. Reset to {}.");
+          headers = parseHeadersInput();
+          new URL(url);
+        } catch (error) {
+          setStatus(error.message, true);
+          return;
         }
 
-        console.log("Using URL:", url);
-        console.log("Using Headers:", headers);
+        const { safe, blocked } = splitHeaders(headers);
+        const lines = [
+          `Target: ${url}`,
+          `Mode: ${getMode()}`,
+          `Browser-safe headers: ${JSON.stringify(safe)}`,
+          `Forbidden in browser: ${JSON.stringify(blocked)}`,
+        ];
 
-        const proxyURL = `/m3u8-proxy?url=${encodeURIComponent(
-          url
-        )}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
-        if (Hls.isSupported()) {
-          const video = document.getElementById("hls");
-          const hls = new Hls();
-
-          hls.loadSource(proxyURL);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, function () {
-            console.log("Loaded stream from:", proxyURL);
+        try {
+          const directResponse = await fetch(url, {
+            method: "GET",
+            headers: safe,
           });
+          lines.push(`Direct browser fetch: HTTP ${directResponse.status}`);
+        } catch (error) {
+          lines.push(`Direct browser fetch failed: ${error.message}`);
+        }
+
+        try {
+          const bridgeUrl = buildProxyUrl("/m3u8-proxy", url, headers);
+          const bridgeResponse = await fetch(bridgeUrl, { method: "GET" });
+          lines.push(`Header Bridge fetch: HTTP ${bridgeResponse.status}`);
+        } catch (error) {
+          lines.push(`Header Bridge fetch failed: ${error.message}`);
+        }
+
+        setStatus(lines.join("\n"));
+      }
+
+      function playUrl(playableUrl, xhrHeaders, statusText) {
+        destroyCurrentPlayer();
+        setStatus(statusText);
+
+        const video = document.getElementById("hls");
+        if (window.Hls && Hls.isSupported()) {
+          hlsInstance = new Hls({
+            xhrSetup(xhr) {
+              applyHeaders(xhr, xhrHeaders);
+            },
+          });
+
+          hlsInstance.loadSource(playableUrl);
+          hlsInstance.attachMedia(video);
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
+            setStatus(`Loaded stream from:\n${playableUrl}`);
+            video.play().catch(() => {});
+          });
+          hlsInstance.on(Hls.Events.ERROR, function (_, data) {
+            const message = data?.details || data?.type || "Unknown HLS error";
+            setStatus(`HLS error: ${message}`, data?.fatal === true);
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = playableUrl;
+          video.play().catch(() => {});
+        } else {
+          setStatus("This browser does not support HLS playback.", true);
         }
       }
+
+      function test() {
+        const url = document.getElementById("url").value.trim();
+        let headers;
+
+        try {
+          headers = parseHeadersInput();
+          new URL(url);
+        } catch (error) {
+          setStatus(error.message, true);
+          return;
+        }
+
+        const mode = getMode();
+        const { safe, blocked } = splitHeaders(headers);
+        const playableUrl = buildPlayableUrl(url, headers, mode);
+
+        if (mode === "direct" && Object.keys(blocked).length) {
+          setStatus(
+            `Direct mode cannot send these headers: ${Object.keys(blocked).join(
+              ", "
+            )}\n` + "Switch to Header Bridge for streams that require them.",
+            true
+          );
+          return;
+        }
+
+        playUrl(
+          playableUrl,
+          mode === "direct" ? safe : {},
+          mode === "bridge"
+            ? "Loading through Header Bridge with the supplied upstream headers."
+            : "Loading directly in your browser. If playback fails, check CORS in DevTools."
+        );
+      }
+
+      readStateFromUrl();
     </script>
   </body>
 </html>

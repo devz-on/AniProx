@@ -1,7 +1,14 @@
 import https from "node:https";
 import http from "node:http";
+import { getProxyAgent } from "./proxyAgent.js";
 
 export async function proxyTs(url, headers, req, res) {
+  if (!url) {
+    res.writeHead(400, { "Content-Type": "text/plain" });
+    res.end("Missing url query parameter");
+    return;
+  }
+
   const isHeadRequest = req?.method === "HEAD";
   let forceHTTPS = false;
 
@@ -20,6 +27,7 @@ export async function proxyTs(url, headers, req, res) {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36",
       ...headers,
     },
+    agent: getProxyAgent(url),
   };
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "*");

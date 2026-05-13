@@ -1,5 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
+import { getProxyAgent } from "./proxyAgent.js";
 
 dotenv.config();
 
@@ -116,7 +117,8 @@ function rewriteManifest(content, sourceUrl, headers) {
         rewritten.push(line.replace(regex, proxyUrl));
       } else if (
         isMasterPlaylist &&
-        (line.startsWith("#EXT-X-MEDIA:") || line.startsWith("#EXT-X-I-FRAME-STREAM-INF:"))
+        (line.startsWith("#EXT-X-MEDIA:") ||
+          line.startsWith("#EXT-X-I-FRAME-STREAM-INF:"))
       ) {
         rewritten.push(rewriteUriAttribute(line, buildM3U8ProxyUrl));
       } else {
@@ -149,9 +151,13 @@ export default async function proxyM3U8(url, headers, req, res) {
 
   let upstreamResponse;
   try {
+    const agent = getProxyAgent(url);
     upstreamResponse = await axios(url, {
       method: upstreamMethod,
       headers: buildUpstreamHeaders(headers),
+      httpAgent: agent,
+      httpsAgent: agent,
+      proxy: false,
       responseType: "text",
       transformResponse: [(data) => data],
       validateStatus: () => true,
