@@ -28,7 +28,7 @@ export default function server() {
     httpProxyOptions: {
       xfwd: false,
     },
-  }).listen(port, Number(host), function () {
+  }).listen(port, host, function () {
     console.log(
       colors.green("Server running on ") + colors.blue(`${web_server_url}`)
     );

@@ -1,10 +1,23 @@
-# M3U8-Proxy
+# AniProx HLS Lab
 
-Proxies m3u8 files through pure JavaScript.
+AniProx serves a browser HLS playground with two playback strategies:
 
-## About
+1. **Direct browser mode**: the HTML/JavaScript page asks the browser to load the M3U8 playlist and media files directly from the stream host.
+2. **Header Bridge mode**: the browser asks AniProx for a same-origin playlist URL, and AniProx relays playlists/segments with the JSON headers supplied by the client.
 
-Some m3u8 files require special headers as well as CORS. This project achieves both by integrating Rob Wu's [CORS proxy](https://github.com/Rob--W/cors-anywhere) and adding a route to proxy m3u8 files.
+Direct browser mode is the pure client-side path. Header Bridge mode exists for streams that require headers the browser is not allowed to set itself, such as `Referer`, `Origin`, `User-Agent`, `Cookie`, or `Host`.
+
+## Important browser limits
+
+Browser JavaScript cannot spoof forbidden request headers and cannot bypass CORS. This is a browser security boundary, not a missing helper function. AniProx handles that boundary by keeping direct playback available and by providing Header Bridge as the practical fallback when an upstream stream requires forbidden headers.
+
+Use **Direct browser** when the stream host allows browser/CORS playback. Use **Header Bridge** when the upstream host requires headers like this:
+
+```json
+{
+  "Referer": "https://megaplay.buzz/"
+}
+```
 
 ## Installation
 
@@ -14,29 +27,47 @@ Some m3u8 files require special headers as well as CORS. This project achieves b
 git clone https://github.com/yahyaMomin/m3u8-proxy.git
 ```
 
-2. Run `bun install`.
-3. Run `bun dev`.
+2. Install dependencies.
 
-You can configure how the proxy works via a `.env` file; it's relatively self-explanatory.
-
+```bash
+bun install
 ```
-# This file is a template for .env file
-# Copy this file to .env and change the values
 
-# Web server configuration
+3. Run the server.
+
+```bash
+bun dev
+```
+
+You can configure the web server with a `.env` file:
+
+```env
 HOST="localhost"
 PORT="3030"
-
-# Public URL to proxy ts files from
-PUBLIC_URL="https://hls-proxy-m3u8.vercel.app"
+PUBLIC_URL="http://localhost:3030"
 ```
+
+`PUBLIC_URL` is used when Header Bridge rewrites child playlists and media segment URLs.
 
 ## Usage
 
-To proxy m3u8 files, use the `/m3u8-proxy` route. All you have to do is input the URL and headers. For example:
+Open the app in your browser:
 
-```
-http://localhost:3030/m3u8-proxy?url=https%3A%2F%2Fojkx.vizcloud.co%2Fsimple%2FEqPFJvsQWADtjDlGha7rC8UurFwHuLiwTk17rqk%2BwYMnU94US2El_Po4w12gXe6GptOSQtc%2Fbr%2Flist.m3u8%23.mp4&headers=%7B%22referer%22%3A%22https%3A%2F%2F9anime.pl%22%7D
+```text
+http://localhost:3030/
 ```
 
-The URL in this case is `https://ojkx.vizcloud.co/simple/EqPFJvsQWADtjDlGha7rC8UurFwHuLiwTk17rqk+wYMnU94US2El_Po4w12gXe6GptOSQtc/br/list.m3u8#.mp4` and the headers are `{"Referer": "https://9anime.pl"}`. This will then send a request to the m3u8 using the headers, modify the content to use the ts proxy, then proxy each ts file using a CORS proxy. If you need help, please join my [Discord](https://discord.gg/F87wYBtnkC).
+Paste a direct `.m3u8` URL, enter optional request headers as JSON, choose a mode, and click **Play**.
+
+You can also share a pre-filled client URL:
+
+```text
+http://localhost:3030/?url=https%3A%2F%2Fexample.com%2Fmaster.m3u8&headers=%7B%7D&mode=direct
+```
+
+## Routes
+
+- `GET /` serves the HLS Lab UI.
+- `GET /m3u8-proxy?url=<encoded-url>&headers=<json>` fetches a playlist with the supplied upstream headers and rewrites child playlist, key, and media URLs through AniProx.
+- `GET /ts-proxy?url=<encoded-url>&headers=<json>` streams a media segment/key with the supplied upstream headers.
+- `/<http(s)://target...>` keeps the generic CORS proxy path available for compatibility.

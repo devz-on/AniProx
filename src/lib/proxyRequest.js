@@ -2,8 +2,7 @@ import url from "node:url";
 import parseURL from "./parseURL.js";
 import withCORS from "./withCORS.js";
 
-
-export default  function onProxyResponse(proxy, proxyReq, proxyRes, req, res) {
+export default function onProxyResponse(proxy, proxyReq, proxyRes, req, res) {
   const requestState = req.corsAnywhereRequestState;
 
   const statusCode = proxyRes.statusCode;
@@ -58,7 +57,7 @@ export default  function onProxyResponse(proxy, proxyReq, proxyRes, req, res) {
   return true;
 }
 
-function proxyRequest(req, res, proxy) {
+export function proxyRequest(req, res, proxy) {
   const location = req.corsAnywhereRequestState.location;
   req.url = location.path;
 

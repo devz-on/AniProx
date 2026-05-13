@@ -8,7 +8,22 @@ import withCORS from "./withCORS.js";
 import parseURL from "./parseURL.js";
 import proxyM3U8 from "./proxyM3U8.js";
 import { proxyTs } from "./proxyTS.js";
-import proxyRequest from "./proxyRequest.js";
+import { proxyRequest } from "./proxyRequest.js";
+
+function parseHeaderQuery(rawHeaders) {
+  if (!rawHeaders) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(rawHeaders);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
 
 export default function getHandler(options, proxy) {
   const __filename = fileURLToPath(import.meta.url);
@@ -73,6 +88,38 @@ export default function getHandler(options, proxy) {
       return;
     }
 
+    const uri = new URL(req.url || "/", "http://localhost:3000");
+
+    if (uri.pathname === "/" && req.method === "GET") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.end(readFileSync(join(__dirname, "../index.html")));
+      return;
+    }
+
+    if (uri.pathname === "/m3u8-proxy") {
+      const targetUrl = uri.searchParams.get("url");
+      if (!targetUrl && req.method === "GET") {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.end(readFileSync(join(__dirname, "../index.html")));
+        return;
+      }
+      return proxyM3U8(
+        targetUrl,
+        parseHeaderQuery(uri.searchParams.get("headers")),
+        req,
+        res
+      );
+    }
+
+    if (uri.pathname === "/ts-proxy") {
+      return proxyTs(
+        uri.searchParams.get("url"),
+        parseHeaderQuery(uri.searchParams.get("headers")),
+        req,
+        res
+      );
+    }
+
     const location = parseURL(req.url.slice(1));
 
     if (
@@ -90,6 +137,7 @@ export default function getHandler(options, proxy) {
         );
         return;
       }
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.end(readFileSync(join(__dirname, "../index.html")));
       return;
     }
@@ -107,44 +155,9 @@ export default function getHandler(options, proxy) {
     }
 
     if (!/^\/https?:/.test(req.url) && !isValidHostName(location.hostname)) {
-      const uri = new URL(req.url || "/", "http://localhost:3000");
-      if (uri.pathname === "/m3u8-proxy") {
-        let headers = {};
-        try {
-          headers = JSON.parse(uri.searchParams.get("headers") ?? "{}");
-        } catch (e) {
-          res.writeHead(500);
-          res.end(e.message);
-          return;
-        }
-        const referer = uri.searchParams.get("referer");
-        if (referer && !headers.referer && !headers.Referer) {
-          headers.referer = referer;
-        }
-        const url = uri.searchParams.get("url") || uri.searchParams.get("u");
-        return proxyM3U8(url ?? "", headers, req, res);
-      } else if (uri.pathname === "/ts-proxy") {
-        let headers = {};
-        try {
-          headers = JSON.parse(uri.searchParams.get("headers") ?? "{}");
-        } catch (e) {
-          res.writeHead(500);
-          res.end(e.message);
-          return;
-        }
-        const referer = uri.searchParams.get("referer");
-        if (referer && !headers.referer && !headers.Referer) {
-          headers.referer = referer;
-        }
-        const url = uri.searchParams.get("url") || uri.searchParams.get("u");
-        return proxyTs(url ?? "", headers, req, res);
-      } else if (uri.pathname === "/") {
-        return res.end(readFileSync(join(__dirname, "../index.html")));
-      } else {
-        res.writeHead(404, "Invalid host", cors_headers);
-        res.end("Invalid host: " + location.hostname);
-        return;
-      }
+      res.writeHead(404, "Invalid host", cors_headers);
+      res.end("Invalid host: " + location.hostname);
+      return;
     }
 
     if (!hasRequiredHeaders(req.headers)) {
